@@ -6,14 +6,14 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 
-from database import get_db
+from database import get_db, init_models
 
 from models import (
     User, UserModel
 )
 
 # create API application
-app = FastAPI()
+app = FastAPI(lifespan=init_models)
 
 # create API endpoints
 @app.get("/test")
