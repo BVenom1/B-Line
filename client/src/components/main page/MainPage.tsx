@@ -1,14 +1,11 @@
-import { UserModel } from '../interfaces'
+import { useState } from "react";
+import { useGlobal } from "../../GlobalContext"
+import AccountManager from "../signup login/AccountManager";
 
-interface MainPageProps {
-    user?: UserModel,
-    signupPageToggleFunc?: React.Dispatch<React.SetStateAction<boolean>>
-}
+const MainPage = () => {
+    const { user } = useGlobal();
 
-const MainPage = ({ user, signupPageToggleFunc }: MainPageProps) => {
-    const toggleSignup = () => {
-        if (signupPageToggleFunc != undefined) signupPageToggleFunc(prev => !prev);
-    }
+    const [accountManagerToggle, setAccountManagerToggle] = useState(false)
 
     return (
         <div className='full-page'>
@@ -17,7 +14,8 @@ const MainPage = ({ user, signupPageToggleFunc }: MainPageProps) => {
                 ? <p>user is not logged in</p>
                 : <p>user {user.user_name} is logged in</p>
             }
-            <button className='btn t-btn' onClick={toggleSignup}>Sign up</button>
+            <button className='btn t-btn' onClick={() => { setAccountManagerToggle(true) }}>Sign up</button>
+            {accountManagerToggle && <AccountManager accountManagerCloseFunc={() => setAccountManagerToggle(false)} />}
         </div>
     )
 }

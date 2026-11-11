@@ -1,26 +1,27 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Signup from './signup';
 import Login from './Login';
 
 interface AccountManagerProps {
-    signupPageToggleFunc?: React.Dispatch<React.SetStateAction<boolean>>
+    accountManagerCloseFunc?: () => void;
 }
 
-const AccountManager = ({ signupPageToggleFunc }: AccountManagerProps) => {
+const AccountManager = ({ accountManagerCloseFunc }: AccountManagerProps) => {
 
-    const [loginToggle, setLoginToggle] = useState(false)
-
-    const closeSignup = () => {
-        if (signupPageToggleFunc != undefined) signupPageToggleFunc(false);
-    }
+    const [loginToggle, setLoginToggle] = useState<"login" | "signup">("login")
 
     return (
         <div className="popup-overlay">
             <div className='popup-box'>
-                <button className='btn circle-btn left-align' onClick={closeSignup}>x</button>
-                {loginToggle ? <Login /> : <Signup />}
-                <button className='btn t-btn left-align' onClick={() => setLoginToggle(p => !p)}>
-                    {loginToggle ? "don't have an accout yet? Signup" : "have an account aleady? Login"}
+                <button className='btn circle-btn left-align' onClick={accountManagerCloseFunc}>x</button>
+                {loginToggle === "login"
+                    ? <Login closeAccountManager={accountManagerCloseFunc} />
+                    : <Signup goToLoginFunc={() => setLoginToggle("login")} />
+                }
+                <button className='btn t-btn left-align' onClick={
+                    () => setLoginToggle(p => p === "login" ? "signup" : "login")
+                }>
+                    {loginToggle === "login" ? "don't have an accout yet? Signup" : "have an account aleady? Login"}
                 </button>
             </div>
         </div>
