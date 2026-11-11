@@ -16,10 +16,18 @@ const Login = ({ closeAccountManager }: LoginProps) => {
         const formData = new FormData(event.currentTarget);
         const formJSON = Object.fromEntries(formData.entries());
         if (formJSON.uname_or_email == undefined || formJSON.uname_or_email === "") {
-            addAlert("Error", "Please enter a username or email.")
+            addAlert({
+                alert_id: "",
+                style: "Error",
+                children: "Please enter a username or email."
+            })
         }
         if (formJSON.password == undefined || formJSON.password === "") {
-            addAlert("Error", "Please enter a password.")
+            addAlert({
+                alert_id: "",
+                style: "Error",
+                children: "Please enter a password."
+            })
         }
 
         const res = await fetch("http://127.0.0.1:8000/login", {
@@ -32,9 +40,18 @@ const Login = ({ closeAccountManager }: LoginProps) => {
 
         const response = await res.json()
 
-        if (!res.ok) addAlert("Error", response.detail);
+        if (!res.ok) addAlert({
+            alert_id: "",
+            style: "Error",
+            children: response.detail
+        });
         else {
             setUser(response);
+            addAlert({
+                alert_id: "",
+                style: "Success",
+                children: "You have successfully logged in"
+            });
             closeAccountManager?.();
         }
     }

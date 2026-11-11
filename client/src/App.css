@@ -4,6 +4,10 @@
     --dark-background: rgb(31, 53, 53);
     --darker-background: rgb(23, 41, 41);
     --button-hover-background: rgb(32, 63, 63);
+    --success-text-color: rgb(102, 200, 84);
+    --error-text-color: rgb(242, 85, 85);
+    --info-text-color: rgb(114, 209, 209);
+    --warning-text-color: rgb(239, 223, 104);
 }
 
 body {
@@ -159,10 +163,20 @@ body {
     transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
-.alert-heading {
-    padding: 0;
-    margin: 0;
-    font-size: large;
+.alert-heading-Success {
+    color: var(--success-text-color);
+}
+
+.alert-heading-Error {
+    color: var(--error-text-color);
+}
+
+.alert-heading-Info {
+    color: var(--info-text-color);
+}
+
+.alert-heading-Warning {
+    color: var(--warning-text-color);
 }
 
 .space {

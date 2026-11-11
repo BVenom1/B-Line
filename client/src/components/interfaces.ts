@@ -12,6 +12,6 @@ export interface UserModel {
 
 export interface AlertModel {
     alert_id: string,
-    style?: "Message" | "Error" | "Success" | "Info",
+    style?: "Message" | "Error" | "Success" | "Info" | "Warning",
     children?: ReactNode,
 }

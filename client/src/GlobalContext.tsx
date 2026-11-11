@@ -7,7 +7,7 @@ interface GlobalContextType {
     user: UserModel | null,
     setUser: React.Dispatch<React.SetStateAction<UserModel | null>>,
     alerts: AlertModel[],
-    addAlert: (style?: "Message" | "Error" | "Success" | "Info", children?: ReactNode, duration?: number) => string,
+    addAlert: (alert: AlertModel, duration?: number) => string,
     removeAlert: (uuid: string) => void,
 }
 
@@ -29,18 +29,14 @@ export const GlobalProvider = ({ children }: GlobalProviderProps) => {
     const removeAlert = useCallback((uuid: string) => {
         setAlerts(prev => prev.filter(v => v.alert_id != uuid));
     }, [])
-    const addAlert = useCallback((style?: "Message" | "Error" | "Success" | "Info", children?: ReactNode, duration: number = 3000) => {
-        const newAlert: AlertModel = {
-            alert_id: window.crypto.randomUUID(),
-            style: style,
-            children: children,
-        }
-        setAlerts(prev => [...prev, newAlert])
+    const addAlert = useCallback((alert: AlertModel, duration: number = 3000) => {
+        alert.alert_id = window.crypto.randomUUID();
+        setAlerts(prev => [...prev, alert])
         setTimeout(() => {
-            removeAlert(newAlert.alert_id)
+            removeAlert(alert.alert_id)
         }, duration);
 
-        return newAlert.alert_id;
+        return alert.alert_id;
     }, [removeAlert])
 
     return (

@@ -11,10 +11,11 @@ function App() {
 
     const addMessage = () => {
         setCount(prev => prev + 1);
-        addAlert(
-            "Message",
-            "This is a generic message " + count,
-        );
+        addAlert({
+            alert_id: "",
+            style: "Warning",
+            children: "This is a generic message " + count
+        });
     }
 
     return (

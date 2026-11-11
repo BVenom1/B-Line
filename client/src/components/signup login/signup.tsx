@@ -26,9 +26,17 @@ const Signup = ({ goToLoginFunc }: SignupProps) => {
 
         const response = await res.json();
 
-        if (!res.ok) addAlert("Error", response.detail);
+        if (!res.ok) addAlert({
+            alert_id: "",
+            style: "Error",
+            children: response.detail
+        });
         else {
-            addAlert("Success", "Signup successful. Please log into your account")
+            addAlert({
+                alert_id: "",
+                style: "Success",
+                children: "Signup successful. Please log into your account"
+            });
             goToLoginFunc?.();
         }
     }
