@@ -1,34 +1,52 @@
 import React from 'react'
+import { fetch } from '@tauri-apps/plugin-http';
+import { useGlobal } from '../../GlobalContext';
 
 interface LoginProps {
     closeAccountManager?: () => void;
 }
 
 const Login = ({ closeAccountManager }: LoginProps) => {
-    const onLogin = (event: React.SubmitEvent<HTMLFormElement>) => {
+
+    const { addAlert, setUser } = useGlobal()
+
+
+    const onLogin = async (event: React.SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const formJSON = Object.fromEntries(formData.entries());
-        console.log(formJSON);
         if (formJSON.uname_or_email == undefined || formJSON.uname_or_email === "") {
-            //TODO: give alert for empty username
+            addAlert("Error", "Please enter a username or email.")
         }
         if (formJSON.password == undefined || formJSON.password === "") {
-            //TODO: give alert for empty password
+            addAlert("Error", "Please enter a password.")
         }
-        //TODO: send login request to server.
-        closeAccountManager?.();
+
+        const res = await fetch("http://127.0.0.1:8000/login", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formJSON)
+        });
+
+        const response = await res.json()
+
+        if (!res.ok) addAlert("Error", response.detail);
+        else {
+            setUser(response);
+            closeAccountManager?.();
+        }
     }
 
     return (
         <div>
-            <h1>Login</h1>
             <form className="form" onSubmit={onLogin}>
-                <div className="form-row">
+                <div className="row">
                     <label htmlFor="name">Username or Email</label>
                     <input type="text" id="uname_or_email" name="uname_or_email" placeholder="user_num_1" />
                 </div>
-                <div className="form-row">
+                <div className="row">
                     <label htmlFor="password">Password</label>
                     <input type="password" name="password" id="login_password" />
                 </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Signup from './signup';
+import Signup from './Signup';
 import Login from './Login';
 
 interface AccountManagerProps {
@@ -13,7 +13,11 @@ const AccountManager = ({ accountManagerCloseFunc }: AccountManagerProps) => {
     return (
         <div className="popup-overlay">
             <div className='popup-box'>
-                <button className='btn circle-btn left-align' onClick={accountManagerCloseFunc}>x</button>
+                <div className="row">
+                    <h1 className='heading'>{loginToggle === "login" ? "Login" : "Signup"}</h1>
+                    <div className="space"></div>
+                    <button className='btn circle-btn right-align' onClick={accountManagerCloseFunc}>x</button>
+                </div>
                 {loginToggle === "login"
                     ? <Login closeAccountManager={accountManagerCloseFunc} />
                     : <Signup goToLoginFunc={() => setLoginToggle("login")} />
@@ -24,7 +28,7 @@ const AccountManager = ({ accountManagerCloseFunc }: AccountManagerProps) => {
                     {loginToggle === "login" ? "don't have an accout yet? Signup" : "have an account aleady? Login"}
                 </button>
             </div>
-        </div>
+        </div >
     )
 }
 

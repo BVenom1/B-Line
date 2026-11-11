@@ -16,17 +16,16 @@ const Signup = ({ goToLoginFunc }: SignupProps) => {
 
     return (
         <div>
-            <h1>Signup</h1>
             <form className="form" onSubmit={onSignup}>
-                <div className="form-row">
+                <div className="row">
                     <label htmlFor="name">Username</label>
                     <input type="text" name='username' id='username' placeholder='username_1' />
                 </div>
-                <div className="form-row">
+                <div className="row">
                     <label htmlFor="email">Email</label>
                     <input type="text" name='email' id='email' placeholder='user@example.com' />
                 </div>
-                <div className="form-row">
+                <div className="row">
                     <label htmlFor="password">Password</label>
                     <input type="password" name='password' id='signup_password' />
                 </div>

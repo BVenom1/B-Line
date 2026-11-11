@@ -2,6 +2,7 @@
 This is the file where the FastAPI app and endpoints are defined.
 '''
 from fastapi import FastAPI, Depends, HTTPException
+from pydantic import BaseModel
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
@@ -44,14 +45,19 @@ async def signup(user: UserModel, db: AsyncSession = Depends(get_db)) -> UserMod
 
     return user.clean_return()
 
+class LoginModel(BaseModel):
+    uname_or_email: str
+    password: str
+
 @app.post("/login")
-async def login(uname_or_email: str, password: str, db: AsyncSession = Depends(get_db)) -> UserModel:
+async def login(login: LoginModel, db: AsyncSession = Depends(get_db)) -> UserModel:
+    print(login)
     #TODO: password hashing
     check = await db.scalar(select(User).where(or_(
-        User.email == uname_or_email,
-        User.user_name == uname_or_email
+        User.email == login.uname_or_email,
+        User.user_name == login.uname_or_email
     )))
-    if check == None or check.password != password:
+    if check == None or check.password != login.password:
         raise HTTPException(401, "Incorrect username/email or password")
 
     return UserModel.model_validate(check).clean_return()

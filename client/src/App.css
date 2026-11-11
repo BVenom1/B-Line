@@ -1,6 +1,40 @@
+:root {
+    --default-background: darkslategrey;
+    --default-text-color: floralwhite;
+    --dark-background: rgb(31, 53, 53);
+    --darker-background: rgb(23, 41, 41);
+    --button-hover-background: rgb(32, 63, 63);
+}
+
 body {
-    background-color: darkslategray;
-    color: floralwhite;
+    background-color: var(--default-background);
+    color: var(--default-text-color);
+}
+
+.heading {
+    margin: 0px;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 .popup-overlay {
@@ -16,16 +50,24 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+
+    animation: fadeIn 0.2s ease forwards;
 }
 
 .popup-box {
     border-radius: 20px;
-    background-color: darkslategray;
+    background-color: var(--default-background);
     padding: 20px;
     display: flex;
     flex-direction: column;
     gap: 10px;
     width: 50vw;
+    animation: slideIn 0.3s ease forwards;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.right-align {
+    align-self: flex-start;
 }
 
 .left-align {
@@ -33,7 +75,7 @@ body {
 }
 
 .btn {
-    background-color: rgb(31, 53, 53);
+    background-color: var(--darker-background);
     padding: 5px 10px;
     border-radius: 20px;
     color: floralwhite;
@@ -41,11 +83,11 @@ body {
 }
 
 .btn:hover {
-    background-color: rgb(32, 63, 63);
+    background-color: var(--button-hover-background);
 }
 
 .btn:active {
-    background-color: darkslategray;
+    background-color: var(--default-background);
 }
 
 .t-btn {
@@ -68,18 +110,61 @@ body {
     align-items: center;
 }
 
-.form-row {
+.row {
     display: flex;
     flex-direction: row;
+    padding: 0;
+    margin: 0;
     gap: 10px;
     align-self: stretch;
     align-items: center;
     justify-content: center;
 }
 
-.form-row input {
+.row input {
     flex-grow: 1;
     border-style: none;
     border-radius: 100px;
     padding: 5px 10px;
+}
+
+.alert-handler {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: fit-content;
+    visibility: hidden;
+    z-index: 10000;
+    backdrop-filter: blur(5px);
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+}
+
+.alert-box {
+    visibility: visible;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 50vw;
+    padding: 10px;
+    background-color: var(--dark-background);
+    border-radius: 10px;
+
+    animation: slideIn 0.3s ease forwards;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.alert-heading {
+    padding: 0;
+    margin: 0;
+    font-size: large;
+}
+
+.space {
+    flex-grow: 10;
 }
