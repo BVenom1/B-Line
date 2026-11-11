@@ -1,17 +1,36 @@
 import React from 'react';
+import { fetch } from '@tauri-apps/plugin-http';
+import { useGlobal } from '../../GlobalContext';
 
 interface SignupProps {
     goToLoginFunc?: () => void
 }
 
 const Signup = ({ goToLoginFunc }: SignupProps) => {
-    const onSignup = (event: React.SubmitEvent<HTMLFormElement>) => {
+
+    const { addAlert } = useGlobal();
+
+    const onSignup = async (event: React.SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const formJSON = Object.fromEntries(formData.entries());
         console.log(formJSON);
-        //TODO: send signup request to server
-        goToLoginFunc?.();
+
+        const res = await fetch("http://127.0.0.1:8000/signup", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ...formJSON })
+        })
+
+        const response = await res.json();
+
+        if (!res.ok) addAlert("Error", response.detail);
+        else {
+            addAlert("Success", "Signup successful. Please log into your account")
+            goToLoginFunc?.();
+        }
     }
 
     return (
@@ -19,7 +38,7 @@ const Signup = ({ goToLoginFunc }: SignupProps) => {
             <form className="form" onSubmit={onSignup}>
                 <div className="row">
                     <label htmlFor="name">Username</label>
-                    <input type="text" name='username' id='username' placeholder='username_1' />
+                    <input type="text" name='user_name' id='username' placeholder='username_1' />
                 </div>
                 <div className="row">
                     <label htmlFor="email">Email</label>

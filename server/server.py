@@ -30,8 +30,10 @@ async def signup(user: UserModel, db: AsyncSession = Depends(get_db)) -> UserMod
     if check != None:
         if check.email.lower() == user.email.lower():
             raise HTTPException(409, "Given email is already in use. Try logging in")
-        else:
+        elif check.user_name == user.user_name:
             raise HTTPException(409, "Given username is taken. Try another username")
+        else:
+            raise HTTPException(409, "Something went wrong. Please try again")
 
     # TODO: password strength check
     # TODO: password hashing
