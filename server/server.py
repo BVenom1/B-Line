@@ -5,7 +5,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, and_
 
 from database import get_db, init_models
 
@@ -71,28 +71,24 @@ async def login(login: LoginModel, db: AsyncSession = Depends(get_db)) -> UserMo
 
     return UserModel.model_validate(check).clean_return()
 
-# POST /create-group
-class CreateGroupModel(BaseModel):
-    user: UserModel         # TODO: check if user is logged in (using web tokens or something else)
-    group: GroupModel
-
-@app.post("/create-group")
-async def create_group(group_info: CreateGroupModel, db: AsyncSession = Depends(get_db)) -> GroupModel:
+# POST /user/{user_id(TODO: replace with session token)}/create-group
+@app.post("/user-{user_id}/create-group")
+async def create_group(user_id: int, group: GroupModel, db: AsyncSession = Depends(get_db)) -> GroupModel:
     # check if user exists. TODO: check if user is logged in using a session token
-    check = await db.scalar(select(User).where(User.user_id == group_info.user.user_id))
+    check = await db.scalar(select(User).where(User.user_id == user_id))
     if check == None: raise HTTPException(401, "Given user does not exist")
 
     # create database entry of group, add to groups table
-    group_info.group.created_at = None                      # reset group creation date
-    group_info.group.group_id = None
-    db_group = Group.from_scema(group_info.group)
+    group.created_at = None                      # reset group creation date
+    group.group_id = None
+    db_group = Group.from_scema(group)
     db.add(db_group)
     await db.commit()
     await db.refresh(db_group)
 
     # create database entry of given user as an admin of the group, add to memberships table
     membership = MembershipModel(
-        user_id = group_info.user.user_id,
+        user_id = user_id,
         group_id = db_group.group_id,
         membership_type = MembershipTypes.ADMIN
     )
@@ -102,3 +98,49 @@ async def create_group(group_info: CreateGroupModel, db: AsyncSession = Depends(
     await db.refresh(db_membership)
 
     return GroupModel.model_validate(db_group)
+
+# GET /user-{user_id(TODO: replace with session token)}/group-{group_id}/get-group-members
+@app.get("/user-{user_id}/group-{group_id}/get-group-members")
+async def get_group_members(user_id: int, group_id: int, db: AsyncSession = Depends(get_db)) -> list[MembershipModel]:
+    # TODO: check if user is valid and logged in
+    check = await db.scalar(select(Membership).where(and_(
+        Membership.user_id == user_id,
+        Membership.group_id == group_id
+    )))
+    if check == None: raise HTTPException(404, "Group not found")
+
+    db_members = (await db.scalars(select(Membership).where(
+        Membership.group_id == group_id
+    ))).all()
+    return [MembershipModel.model_validate(x).clean_return() for x in db_members]
+
+# PUT /user-{user_id}/group-{group_id}/add_friend-{friend_id}
+@app.put("/user-{user_id}/group-{group_id}/add_friend-{friend_id}")
+async def add_friend(user_id: int, group_id: int, friend_id: int, db: AsyncSession = Depends(get_db)) -> MembershipModel:
+    # TODO: check if user is valid and logged in
+
+    # check if the user is an admin in the group
+    check = await db.scalar(select(Membership).where(and_(
+        Membership.user_id == user_id,
+        Membership.group_id == group_id
+    )))
+    if check == None: raise HTTPException(404, "Group not found")
+    elif check.membership_type != MembershipTypes.ADMIN: raise HTTPException(403, "User does not have admin privilege")
+
+    # check if the friend is a member in the group
+    check = await db.scalar(select(Membership).where(and_(
+        Membership.user_id == friend_id,
+        Membership.group_id == group_id
+    )))
+    if check != None: raise HTTPException(409, "User's friend is already in the group")
+
+    # add friend to group
+    db_membership = Membership.from_schema(MembershipModel(
+        user_id=friend_id,
+        group_id=group_id
+    ))
+    db.add(db_membership)
+    await db.commit()
+    await db.refresh(db_membership)
+
+    return MembershipModel.model_validate(db_membership).clean_return()

@@ -27,15 +27,9 @@ class UserModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     def clean_return(self) -> UserModel:
-        return UserModel(
-            user_id = self.user_id,
-            user_name = self.user_name,
-            email = self.email,
-            status = self.status,
-            is_verified = self.is_verified,
-            created_at = self.created_at,
-            verified_at = self.verified_at
-        )
+        clean_user = self.model_copy()
+        clean_user.password = None
+        return clean_user
 
 class User(Base):
     __tablename__ = "users"
@@ -103,9 +97,14 @@ class MembershipModel(BaseModel):
     group_id: int | None = None
     joined_at: datetime | None = None
     membership_type: MembershipTypes = MembershipTypes.MEMBER
-    notification_type: NotificationTypes = NotificationTypes.NOTIFY
+    notification_type: NotificationTypes | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    def clean_return(self) -> MembershipModel:
+        clean_membership = self.model_copy()
+        clean_membership.notification_type = None
+        return clean_membership
 
 class Membership(Base):
     __tablename__ = "memberships"
@@ -124,5 +123,5 @@ class Membership(Base):
             group_id = membership.group_id,
             joined_at = membership.joined_at or datetime.now().astimezone(),
             membership_type = membership.membership_type,
-            notification_type = membership.notification_type
+            notification_type = membership.notification_type or NotificationTypes.NOTIFY
         )

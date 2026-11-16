@@ -182,3 +182,17 @@ body {
 .space {
     flex-grow: 10;
 }
+
+.column {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    align-self: stretch;
+    align-items: center;
+    justify-content: center;
+}
+
+.gap {
+    gap: 10px;
+}

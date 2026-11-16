@@ -1,21 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGlobal } from "../../GlobalContext"
 import AccountManager from "../signup login/AccountManager";
+import Taskbar from "./Taskbar";
 
 const MainPage = () => {
     const { user } = useGlobal();
 
-    const [accountManagerToggle, setAccountManagerToggle] = useState(false)
+    useEffect(() => {
+        //console.log("user changed", user)
+        const getGroups = async () => {
+            if (user == null || user == undefined) return;
+            // TODO: fetch request for all the groups the user is part of
+        }
+        getGroups();
+    }, [user])
 
     return (
         <div className='full-page'>
-            <h1>Main Page</h1>
-            {(user == undefined)
-                ? <p>user is not logged in</p>
-                : <p>user {user.user_name} is logged in</p>
-            }
-            <button className='btn t-btn' onClick={() => { setAccountManagerToggle(true) }}>Sign up</button>
-            {accountManagerToggle && <AccountManager accountManagerCloseFunc={() => setAccountManagerToggle(false)} />}
+            <Taskbar />
         </div>
     )
 }
