@@ -14,15 +14,16 @@ const AccountManager = ({ accountManagerCloseFunc }: AccountManagerProps) => {
         <div className="popup-overlay">
             <div className='popup-box'>
                 <div className="row">
-                    <h1 className='heading'>{loginToggle === "login" ? "Login" : "Signup"}</h1>
+                    <h1 className='no-margin'>{loginToggle === "login" ? "Login" : "Signup"}</h1>
                     <div className="space"></div>
                     <button className='btn circle-btn right-align' onClick={accountManagerCloseFunc}>x</button>
                 </div>
+                <div className="space-10"></div>
                 {loginToggle === "login"
                     ? <Login closeAccountManager={accountManagerCloseFunc} />
                     : <Signup goToLoginFunc={() => setLoginToggle("login")} />
                 }
-                <button className='btn t-btn left-align' onClick={
+                <button className='btn t-btn right-align' onClick={
                     () => setLoginToggle(p => p === "login" ? "signup" : "login")
                 }>
                     {loginToggle === "login" ? "don't have an accout yet? Signup" : "have an account aleady? Login"}

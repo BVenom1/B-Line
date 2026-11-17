@@ -1,6 +1,7 @@
 :root {
     --default-background: darkslategrey;
     --default-text-color: floralwhite;
+    --shadow-text-color: cadetblue;
     --dark-background: rgb(31, 53, 53);
     --darker-background: rgb(23, 41, 41);
     --button-hover-background: rgb(32, 63, 63);
@@ -15,7 +16,7 @@ body {
     color: var(--default-text-color);
 }
 
-.heading {
+.no-margin {
     margin: 0px;
 }
 
@@ -71,11 +72,11 @@ body {
 }
 
 .right-align {
-    align-self: flex-start;
+    align-self: flex-end;
 }
 
 .left-align {
-    align-self: flex-end;
+    align-self: flex-start;
 }
 
 .btn {
@@ -191,8 +192,39 @@ body {
     align-self: stretch;
     align-items: center;
     justify-content: center;
+    gap: 10px;
 }
 
-.gap {
-    gap: 10px;
+.mainpage {
+    margin: 0;
+    padding: 0;
+    background-color: var(--default-background);
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    top: 0;
+    left: 0;
+}
+
+.taskbar {
+    padding: 10px;
+    background-color: var(--dark-background);
+    border-radius: 0 0 10px 10px;
+}
+
+.groupbutton {
+    padding: 10px;
+}
+
+.groupbutton+.groupbutton {
+    border-top: 2px solid var(--dark-background);
+}
+
+.shadow-text {
+    color: var(--shadow-text-color);
+}
+
+.space-10 {
+    width: 10px;
+    height: 10px;
 }

@@ -2,22 +2,49 @@ import { useEffect, useState } from "react";
 import { useGlobal } from "../../GlobalContext"
 import AccountManager from "../signup login/AccountManager";
 import Taskbar from "./Taskbar";
+import { GroupModel } from "../interfaces";
+import GroupButton from "./GroupButton";
 
 const MainPage = () => {
-    const { user } = useGlobal();
+    const { user, addAlert } = useGlobal();
+
+    const [groups, setGroups] = useState<GroupModel[]>([])
 
     useEffect(() => {
-        //console.log("user changed", user)
-        const getGroups = async () => {
-            if (user == null || user == undefined) return;
-            // TODO: fetch request for all the groups the user is part of
+        if (user == null || user == undefined) {
+            setGroups([]);
+            return;
         }
-        getGroups();
+        try {
+            fetch(`http://127.0.0.1:8000/user-${user.user_id}/get_groups`)
+                .then(res => {
+                    if (!res.ok) {
+                        addAlert({
+                            alert_id: "",
+                            style: "Error",
+                            children: res.statusText
+                        });
+                        throw new Error(res.statusText)
+                    }
+                    return res.json()
+                })
+                .then(resJSON => {
+                    setGroups(resJSON)
+                })
+        } catch (e: unknown) {
+            if (e instanceof Error) {
+                console.error("Failed to fetch groups: ", e.message)
+            } else {
+                console.error("Unknown error when fetching groups: ", String(e))
+            }
+        }
+
     }, [user])
 
     return (
-        <div className='full-page'>
+        <div className='mainpage'>
             <Taskbar />
+            {groups.map(g => <GroupButton group={g} />)}
         </div>
     )
 }

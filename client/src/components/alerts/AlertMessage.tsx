@@ -8,7 +8,7 @@ const AlertMessage = ({ alert_id, style, children }: AlertModel) => {
     return (
         <div className={"alert-box alert-" + style}>
             <div className="row">
-                {style && <h3 className={"heading alert-heading-" + style}>{style}</h3>}
+                {style && <h3 className={"no-margin alert-heading-" + style}>{style}</h3>}
                 <div className="space"></div>
                 <button className='btn circle-btn right-align'
                     onClick={() => removeAlert(alert_id)}

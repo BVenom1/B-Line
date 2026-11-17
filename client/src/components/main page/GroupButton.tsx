@@ -1,19 +1,19 @@
 import React from 'react'
 import { GroupModel } from '../interfaces'
 
-const GroupButton = (group: GroupModel) => {
+interface GroupButtonProps {
+    group: GroupModel
+}
+
+const GroupButton = ({ group }: GroupButtonProps) => {
     return (
-        <div className="group-button row">
+        <div className="groupbutton row">
             <div className="column">
-                <h3 className="heading left-align">{group.group_name}</h3>
-                <p className="left-align">{group.description}</p>
+                <h3 className="no-margin left-align">{group.group_name}</h3>
+                <p className="no-margin left-align shadow-text">{group.description}</p>
             </div>
             <div className="space"></div>
-            <div className="right-align">{
-                group.created_at?.getFullYear() + "-" +
-                group.created_at?.getMonth() + "-" +
-                group.created_at?.getDate()
-            }</div>
+            <div className='shadow-text'>{String(group.created_at).slice(0, 10)}</div>
         </div>
     )
 }

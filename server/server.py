@@ -2,6 +2,8 @@
 This is the file where the FastAPI app and endpoints are defined.
 '''
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
 from pydantic import BaseModel
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +19,20 @@ from models import (
 
 # create API application
 app = FastAPI(lifespan=init_models)
+
+# add middleware to allow tauri app to communicate
+origins = [
+    "http://localhost:1420",
+    "http://127.0.0.1:1420"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 # create API endpoints
 @app.get("/test")
@@ -71,7 +87,7 @@ async def login(login: LoginModel, db: AsyncSession = Depends(get_db)) -> UserMo
 
     return UserModel.model_validate(check).clean_return()
 
-# POST /user/{user_id(TODO: replace with session token)}/create-group
+# POST /user-{user_id(TODO: replace with session token)}/create-group
 @app.post("/user-{user_id}/create-group")
 async def create_group(user_id: int, group: GroupModel, db: AsyncSession = Depends(get_db)) -> GroupModel:
     # check if user exists. TODO: check if user is logged in using a session token
@@ -144,3 +160,16 @@ async def add_friend(user_id: int, group_id: int, friend_id: int, db: AsyncSessi
     await db.refresh(db_membership)
 
     return MembershipModel.model_validate(db_membership).clean_return()
+
+# GET /user-{user_id}/get_groups
+@app.get("/user-{user_id}/get_groups")
+async def get_groups(user_id: int, db: AsyncSession = Depends(get_db)) -> list[GroupModel]:
+    # TODO: check if user exists & is logged in
+
+    db_groups = await db.scalars(
+        select(Group)
+        .join(Membership, Group.group_id == Membership.group_id)
+        .where(Membership.user_id == user_id)
+    )
+
+    return [GroupModel.model_validate(x) for x in db_groups]
