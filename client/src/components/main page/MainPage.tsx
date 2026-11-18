@@ -2,10 +2,14 @@ import { useEffect, useState } from "react";
 import { useGlobal } from "../../GlobalContext"
 import AccountManager from "../signup login/AccountManager";
 import Taskbar from "./Taskbar";
-import { GroupModel } from "../interfaces";
+import { GroupModel, UserModel } from "../interfaces";
 import GroupButton from "./GroupButton";
 
-const MainPage = () => {
+interface MainPageProps {
+    onGroupButtonClick: (group: GroupModel) => void
+}
+
+const MainPage = ({ onGroupButtonClick }: MainPageProps) => {
     const { user, addAlert } = useGlobal();
 
     const [groups, setGroups] = useState<GroupModel[]>([])
@@ -42,9 +46,9 @@ const MainPage = () => {
     }, [user])
 
     return (
-        <div className='mainpage'>
+        <div className='main-page'>
             <Taskbar />
-            {groups.map(g => <GroupButton group={g} />)}
+            {groups.map(g => <GroupButton group={g} onClick={() => onGroupButtonClick(g)} />)}
         </div>
     )
 }

@@ -2,12 +2,13 @@ import React from 'react'
 import { GroupModel } from '../interfaces'
 
 interface GroupButtonProps {
-    group: GroupModel
+    group: GroupModel,
+    onClick: () => void
 }
 
-const GroupButton = ({ group }: GroupButtonProps) => {
+const GroupButton = ({ group, onClick }: GroupButtonProps) => {
     return (
-        <div className="groupbutton row">
+        <div className="group-button row" onClick={onClick}>
             <div className="column">
                 <h3 className="no-margin left-align">{group.group_name}</h3>
                 <p className="no-margin left-align shadow-text">{group.description}</p>

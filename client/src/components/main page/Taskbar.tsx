@@ -10,7 +10,7 @@ const Taskbar = () => {
     const [accountManagerToggle, setAccountManagerToggle] = useState(false);
 
     return (
-        <div className='taskbar row'>
+        <div className='task-bar row'>
             {
                 user != undefined
                     ? <div className="column">
