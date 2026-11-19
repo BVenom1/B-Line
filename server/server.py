@@ -13,8 +13,9 @@ from database import get_db, init_models
 
 from models import (
     User, UserModel,
+    Conversation,
     Group, GroupModel,
-    Membership, MembershipModel, MembershipTypes
+    Membership, MembershipModel, MembershipTypes,
 )
 
 # create API application
@@ -54,7 +55,7 @@ async def signup(user: UserModel, db: AsyncSession = Depends(get_db)) -> UserMod
         else:
             raise HTTPException(409, "Something went wrong. Please try again")
 
-    user.user_id = None
+    user.user_id = None         # reset user_id (prevents arbitrary user_id insertions)
     user.created_at = None      # reset creation & verification dates to prevent user from
     user.verified_at = None     # accessing messages from before their account was created
     # TODO: password strength check
@@ -87,16 +88,23 @@ async def login(login: LoginModel, db: AsyncSession = Depends(get_db)) -> UserMo
 
     return UserModel.model_validate(check).clean_return()
 
-# POST /user-{user_id(TODO: replace with session token)}/create-group
+# POST /user-{user_id}/create-group
 @app.post("/user-{user_id}/create-group")
 async def create_group(user_id: int, group: GroupModel, db: AsyncSession = Depends(get_db)) -> GroupModel:
     # check if user exists. TODO: check if user is logged in using a session token
     check = await db.scalar(select(User).where(User.user_id == user_id))
     if check == None: raise HTTPException(401, "Given user does not exist")
 
+    # create conversation for the group
+    db_conversation = Conversation()
+    db.add(db_conversation)
+    await db.commit()
+    await db.refresh(db_conversation)
+
     # create database entry of group, add to groups table
-    group.created_at = None                      # reset group creation date
-    group.group_id = None
+    group.created_at = None     # reset group creation date
+    group.group_id = None       # reset group_id (prevents arbitrary group_id insertions)
+    group.conversation_id = db_conversation.conversation_id     # attach conversation to group
     db_group = Group.from_scema(group)
     db.add(db_group)
     await db.commit()
@@ -113,11 +121,21 @@ async def create_group(user_id: int, group: GroupModel, db: AsyncSession = Depen
     await db.commit()
     await db.refresh(db_membership)
 
-    return GroupModel.model_validate(db_group)
+    return GroupModel.model_validate(db_group).clean_return()
 
-# GET /user-{user_id(TODO: replace with session token)}/group-{group_id}/get-group-members
+# GET /user-{user_id}/group-{group_id}/get-group-members
+class MembershipUserModel(BaseModel):
+    membership: MembershipModel
+    user: UserModel
+
+    def clean_return(self) -> MembershipUserModel:
+        return MembershipUserModel(
+            membership=self.membership.clean_return(),
+            user=self.user.clean_return()
+        )
+
 @app.get("/user-{user_id}/group-{group_id}/get-group-members")
-async def get_group_members(user_id: int, group_id: int, db: AsyncSession = Depends(get_db)) -> list[MembershipModel]:
+async def get_group_members(user_id: int, group_id: int, db: AsyncSession = Depends(get_db)) -> list[MembershipUserModel]:
     # TODO: check if user is valid and logged in
     check = await db.scalar(select(Membership).where(and_(
         Membership.user_id == user_id,
@@ -125,10 +143,15 @@ async def get_group_members(user_id: int, group_id: int, db: AsyncSession = Depe
     )))
     if check == None: raise HTTPException(404, "Group not found")
 
-    db_members = (await db.scalars(select(Membership).where(
-        Membership.group_id == group_id
-    ))).all()
-    return [MembershipModel.model_validate(x).clean_return() for x in db_members]
+    db_members = (
+        await db.execute(select(Membership, User)
+        .join(User, Membership.user_id == User.user_id)
+        .where(Membership.group_id == group_id))
+    ).all()
+    return [
+        MembershipUserModel(membership=membership, user=user).clean_return()
+        for membership, user in db_members
+    ]
 
 # PUT /user-{user_id}/group-{group_id}/add_friend-{friend_id}
 @app.put("/user-{user_id}/group-{group_id}/add_friend-{friend_id}")

@@ -5,7 +5,7 @@ related to the database tables are defined.
 from database import Base
 
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, false, DateTime, ForeignKey
+from sqlalchemy import String, false, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import CITEXT
 
 from pydantic import BaseModel, EmailStr, ConfigDict
@@ -55,14 +55,25 @@ class User(Base):
             verified_at = user.verified_at
         )
 
+# conversations:
+class Conversation(Base):
+    __tablename__ = "conversations"
+    conversation_id: Mapped[int] = mapped_column(primary_key=True)
+
 # groups:
 class GroupModel(BaseModel):
     group_id: int | None = None
     group_name: str | None = None
     description: str | None = None
     created_at: datetime | None = None
+    conversation_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    def clean_return(self) -> GroupModel:
+        clean_group = self.model_copy()
+        clean_group.conversation_id = None
+        return clean_group
 
 class Group(Base):
     __tablename__ = "groups"
@@ -70,6 +81,10 @@ class Group(Base):
     group_name: Mapped[str] = mapped_column(String(50))
     description: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    conversation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("conversations.conversation_id", ondelete="SET NULL"),
+        nullable=True
+    )
 
     @classmethod
     def from_scema(cls, group: GroupModel) -> Group:
@@ -77,7 +92,8 @@ class Group(Base):
             group_id = group.group_id,
             group_name = group.group_name,
             description = group.description,
-            created_at = group.created_at or datetime.now().astimezone()
+            created_at = group.created_at or datetime.now().astimezone(),
+            conversation_id = group.conversation_id
         )
 
 # memberships:
@@ -100,6 +116,10 @@ class MembershipModel(BaseModel):
     notification_type: NotificationTypes | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "group_id", name="unique_membership")
+    )
 
     def clean_return(self) -> MembershipModel:
         clean_membership = self.model_copy()
