@@ -8,45 +8,35 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import String, false, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import CITEXT
 
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import enum
+
+SESSION_TTL_DAYS = 14       # the number of days for which the session token is valid
+
+def date_func() -> datetime:
+    return datetime.now(timezone.utc)
 
 # users:
 class UserModel(BaseModel):
-    user_id: int | None = None
-    user_name: str | None = None
-    email: EmailStr | None = None
-    password: str | None = None
+    user_name: str
+    email: EmailStr
     status: str | None = None
     is_verified: bool = False
-    created_at: datetime | None = None
+    created_at: datetime
     verified_at: datetime | None = None
 
 class User(Base):
     __tablename__ = "users"
     user_id: Mapped[int] = mapped_column(primary_key=True)
-    user_name: Mapped[str] = mapped_column(String(25), unique=True)
-    email: Mapped[EmailStr] = mapped_column(CITEXT(255), unique=True)
-    password: Mapped[str] = mapped_column(String)
-    status: Mapped[str | None] = mapped_column(String)
+    user_name: Mapped[str] = mapped_column(String(25), unique=True, index=True)
+    email: Mapped[EmailStr] = mapped_column(CITEXT(255), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String)
+    status: Mapped[str | None] = mapped_column(String, default=None)
     is_verified: Mapped[bool] = mapped_column(server_default=false())
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-    @classmethod
-    def from_schema(cls, user: UserModel) -> User:
-        return User(
-            user_id = user.user_id,
-            user_name = user.user_name,
-            email = user.email,
-            password = user.password,
-            status = user.status,
-            is_verified = user.is_verified,
-            created_at = user.created_at or datetime.now().astimezone(),
-            verified_at = user.verified_at
-        )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=date_func())
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
     def clean_return(self) -> UserModel:
         return UserModel(
@@ -58,6 +48,15 @@ class User(Base):
             verified_at=self.verified_at
         )
 
+# session tokens:
+class SessionToken(Base):
+    __tablename__ = "session_tokens"
+    session_id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=date_func())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=date_func() + timedelta(days=SESSION_TTL_DAYS))
+
 # conversations:
 class Conversation(Base):
     __tablename__ = "conversations"
@@ -65,11 +64,9 @@ class Conversation(Base):
 
 # groups:
 class GroupModel(BaseModel):
-    group_id: int | None = None
-    group_name: str | None = None
+    group_name: str
     description: str | None = None
-    created_at: datetime | None = None
-    conversation_id: int | None = None
+    created_at: datetime
 
 class Group(Base):
     __tablename__ = "groups"
@@ -81,16 +78,6 @@ class Group(Base):
         ForeignKey("conversations.conversation_id", ondelete="SET NULL"),
         nullable=True
     )
-
-    @classmethod
-    def from_scema(cls, group: GroupModel) -> Group:
-        return Group(
-            group_id = group.group_id,
-            group_name = group.group_name,
-            description = group.description,
-            created_at = group.created_at or datetime.now().astimezone(),
-            conversation_id = group.conversation_id
-        )
 
     def clean_return(self) -> GroupModel:
         return GroupModel(
@@ -110,14 +97,6 @@ class NotificationTypes(enum.Enum):
     NOTIFY = "notify"
     MUTE = "mute"
 
-class MembershipModel(BaseModel):
-    membership_id: int | None = None
-    user_id: int | None = None
-    group_id: int | None = None
-    joined_at: datetime | None = None
-    membership_type: MembershipTypes = MembershipTypes.MEMBER
-    notification_type: NotificationTypes | None = None
-
 class Membership(Base):
     __tablename__ = "memberships"
     membership_id: Mapped[int] = mapped_column(primary_key=True)
@@ -128,27 +107,8 @@ class Membership(Base):
     notification_type: Mapped[NotificationTypes] = mapped_column(default=NotificationTypes.NOTIFY)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "group_id", name="unique_membership")
+        UniqueConstraint("user_id", "group_id", name="unique_membership"),
     )
-
-    @classmethod
-    def from_schema(cls, membership: MembershipModel) -> Membership:
-        return Membership(
-            membership_id = membership.membership_id,
-            user_id = membership.user_id,
-            group_id = membership.group_id,
-            joined_at = membership.joined_at or datetime.now().astimezone(),
-            membership_type = membership.membership_type,
-            notification_type = membership.notification_type or NotificationTypes.NOTIFY
-        )
-
-    def clean_return(self) -> MembershipModel:
-        return MembershipModel(
-            user_id=self.user_id,
-            group_id=self.group_id,
-            joined_at=self.joined_at,
-            membership_type=self.membership_type
-        )
 
 # contacts
 class ContactStatus(enum.Enum):
@@ -157,17 +117,8 @@ class ContactStatus(enum.Enum):
     REJECTED = "rejected"
     BLOCKED = "blocked"
 
-class ContactModel(BaseModel):
-    contact_id: int | None = None
-    user_id: int | None = None
-    contact_user_id: int | None = None
-    nickname: str | None = None
-    requested_at: datetime | None = None
-    responded_at: datetime | None = None
-    contact_status: ContactStatus = ContactStatus.REQUESTED
-    conversation_id: int | None = None
-
 class Contact(Base):
+    __tablename__ = "contacts"
     contact_id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     contact_user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
@@ -176,24 +127,3 @@ class Contact(Base):
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     contact_status: Mapped[ContactStatus] = mapped_column(default=ContactStatus.REQUESTED)
     conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.conversation_id"))
-
-    @classmethod
-    def from_schema(cls, contact: ContactModel) -> Contact:
-        return Contact(
-            contact_id = contact.contact_id,
-            user_id = contact.user_id,
-            contact_user_id = contact.contact_user_id,
-            nickname = contact.nickname,
-            requested_at = contact.requested_at or datetime.now().astimezone(),
-            responded_at = contact.responded_at,
-            contact_status = contact.contact_status,
-            conversation_id = contact.conversation_id
-        )
-
-    def clean_return(self) -> ContactModel:
-        return ContactModel(
-            user_id=self.user_id,
-            contact_user_id=self.contact_user_id,
-            nickname=self.nickname,
-            contact_status=self.contact_status
-        )

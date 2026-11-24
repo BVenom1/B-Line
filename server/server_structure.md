@@ -4,7 +4,7 @@ This it a description of all the tables in the database
 user_id             int             primary key
 user_name           str(25)         unique not null
 email               emailstr        unique not null
-password            str             not null
+password_hash       str             not null
 status              str(255)
 is_verified         bool            default false
 created_at          datetime        not null
