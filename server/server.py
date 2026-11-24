@@ -16,6 +16,7 @@ from models import (
     Conversation,
     Group, GroupModel,
     Membership, MembershipModel, MembershipTypes,
+    Contact, ContactModel,
 )
 
 # create API application
@@ -68,7 +69,7 @@ async def signup(user: UserModel, db: AsyncSession = Depends(get_db)) -> UserMod
 
     # TODO: send verification email
 
-    return user.clean_return()
+    return db_user.clean_return()
 
 # POST /login
 class LoginModel(BaseModel):
@@ -86,7 +87,7 @@ async def login(login: LoginModel, db: AsyncSession = Depends(get_db)) -> UserMo
     if check == None or check.password != login.password:
         raise HTTPException(401, "Incorrect username/email or password")
 
-    return UserModel.model_validate(check).clean_return()
+    return check.clean_return()
 
 # POST /user-{user_id}/create-group
 @app.post("/user-{user_id}/create-group")
@@ -121,18 +122,12 @@ async def create_group(user_id: int, group: GroupModel, db: AsyncSession = Depen
     await db.commit()
     await db.refresh(db_membership)
 
-    return GroupModel.model_validate(db_group).clean_return()
+    return db_group.clean_return()
 
 # GET /user-{user_id}/group-{group_id}/get-group-members
 class MembershipUserModel(BaseModel):
     membership: MembershipModel
     user: UserModel
-
-    def clean_return(self) -> MembershipUserModel:
-        return MembershipUserModel(
-            membership=self.membership.clean_return(),
-            user=self.user.clean_return()
-        )
 
 @app.get("/user-{user_id}/group-{group_id}/get-group-members")
 async def get_group_members(user_id: int, group_id: int, db: AsyncSession = Depends(get_db)) -> list[MembershipUserModel]:
@@ -149,7 +144,7 @@ async def get_group_members(user_id: int, group_id: int, db: AsyncSession = Depe
         .where(Membership.group_id == group_id))
     ).all()
     return [
-        MembershipUserModel(membership=membership, user=user).clean_return()
+        MembershipUserModel(membership=membership.clean_return(), user=user.clean_return())
         for membership, user in db_members
     ]
 
@@ -182,7 +177,7 @@ async def add_friend(user_id: int, group_id: int, friend_id: int, db: AsyncSessi
     await db.commit()
     await db.refresh(db_membership)
 
-    return MembershipModel.model_validate(db_membership).clean_return()
+    return db_membership.clean_return()
 
 # GET /user-{user_id}/get_groups
 @app.get("/user-{user_id}/get_groups")
@@ -196,3 +191,33 @@ async def get_groups(user_id: int, db: AsyncSession = Depends(get_db)) -> list[G
     )
 
     return [GroupModel.model_validate(x) for x in db_groups]
+
+# POST /user-{user_id}/add_contact-{contact_uname_or_email}
+
+@app.post("/user-{user_id}/add_contact-{contact_uname_or_email}")
+async def add_contact(user_id: int, contact_uname_or_email: str, db: AsyncSession = Depends(get_db)) -> ContactModel:
+    check = await db.scalar(select(User).where(User.user_id == user_id))
+    if check == None:
+        raise HTTPException(401, "User does not exist")
+    db_contact_user = await db.scalar(select(User).where(or_(
+        User.email == contact_uname_or_email,
+        User.user_name == contact_uname_or_email
+    )))
+    if db_contact_user == None:
+        raise HTTPException(401, "Contact does not exist")
+
+    db_conversation = Conversation()
+
+    contact = ContactModel(
+        user_id=user_id,
+        contact_user_id=db_contact_user.user_id,
+        conversation_id=db_conversation.conversation_id
+    )
+
+    db_contact = Contact.from_schema(contact)
+
+    db.add(db_contact)
+    await db.commit()
+    await db.refresh(db_contact)
+
+    return db_contact.clean_return()

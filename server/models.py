@@ -24,13 +24,6 @@ class UserModel(BaseModel):
     created_at: datetime | None = None
     verified_at: datetime | None = None
 
-    model_config = ConfigDict(from_attributes=True)
-
-    def clean_return(self) -> UserModel:
-        clean_user = self.model_copy()
-        clean_user.password = None
-        return clean_user
-
 class User(Base):
     __tablename__ = "users"
     user_id: Mapped[int] = mapped_column(primary_key=True)
@@ -55,6 +48,16 @@ class User(Base):
             verified_at = user.verified_at
         )
 
+    def clean_return(self) -> UserModel:
+        return UserModel(
+            user_name=self.user_name,
+            email=self.email,
+            status=self.status,
+            is_verified=self.is_verified,
+            created_at=self.created_at,
+            verified_at=self.verified_at
+        )
+
 # conversations:
 class Conversation(Base):
     __tablename__ = "conversations"
@@ -67,13 +70,6 @@ class GroupModel(BaseModel):
     description: str | None = None
     created_at: datetime | None = None
     conversation_id: int | None = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-    def clean_return(self) -> GroupModel:
-        clean_group = self.model_copy()
-        clean_group.conversation_id = None
-        return clean_group
 
 class Group(Base):
     __tablename__ = "groups"
@@ -96,6 +92,13 @@ class Group(Base):
             conversation_id = group.conversation_id
         )
 
+    def clean_return(self) -> GroupModel:
+        return GroupModel(
+            group_name=self.group_name,
+            description=self.description,
+            created_at=self.created_at
+        )
+
 # memberships:
 class MembershipTypes(enum.Enum):
     MEMBER = "member"
@@ -115,17 +118,6 @@ class MembershipModel(BaseModel):
     membership_type: MembershipTypes = MembershipTypes.MEMBER
     notification_type: NotificationTypes | None = None
 
-    model_config = ConfigDict(from_attributes=True)
-
-    __table_args__ = (
-        UniqueConstraint("user_id", "group_id", name="unique_membership")
-    )
-
-    def clean_return(self) -> MembershipModel:
-        clean_membership = self.model_copy()
-        clean_membership.notification_type = None
-        return clean_membership
-
 class Membership(Base):
     __tablename__ = "memberships"
     membership_id: Mapped[int] = mapped_column(primary_key=True)
@@ -134,6 +126,10 @@ class Membership(Base):
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     membership_type: Mapped[MembershipTypes] = mapped_column(default=MembershipTypes.MEMBER)
     notification_type: Mapped[NotificationTypes] = mapped_column(default=NotificationTypes.NOTIFY)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "group_id", name="unique_membership")
+    )
 
     @classmethod
     def from_schema(cls, membership: MembershipModel) -> Membership:
@@ -144,4 +140,60 @@ class Membership(Base):
             joined_at = membership.joined_at or datetime.now().astimezone(),
             membership_type = membership.membership_type,
             notification_type = membership.notification_type or NotificationTypes.NOTIFY
+        )
+
+    def clean_return(self) -> MembershipModel:
+        return MembershipModel(
+            user_id=self.user_id,
+            group_id=self.group_id,
+            joined_at=self.joined_at,
+            membership_type=self.membership_type
+        )
+
+# contacts
+class ContactStatus(enum.Enum):
+    REQUESTED = "requested"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    BLOCKED = "blocked"
+
+class ContactModel(BaseModel):
+    contact_id: int | None = None
+    user_id: int | None = None
+    contact_user_id: int | None = None
+    nickname: str | None = None
+    requested_at: datetime | None = None
+    responded_at: datetime | None = None
+    contact_status: ContactStatus = ContactStatus.REQUESTED
+    conversation_id: int | None = None
+
+class Contact(Base):
+    contact_id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
+    contact_user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
+    nickname: Mapped[str | None] = mapped_column(String(25))
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    contact_status: Mapped[ContactStatus] = mapped_column(default=ContactStatus.REQUESTED)
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.conversation_id"))
+
+    @classmethod
+    def from_schema(cls, contact: ContactModel) -> Contact:
+        return Contact(
+            contact_id = contact.contact_id,
+            user_id = contact.user_id,
+            contact_user_id = contact.contact_user_id,
+            nickname = contact.nickname,
+            requested_at = contact.requested_at or datetime.now().astimezone(),
+            responded_at = contact.responded_at,
+            contact_status = contact.contact_status,
+            conversation_id = contact.conversation_id
+        )
+
+    def clean_return(self) -> ContactModel:
+        return ContactModel(
+            user_id=self.user_id,
+            contact_user_id=self.contact_user_id,
+            nickname=self.nickname,
+            contact_status=self.contact_status
         )
