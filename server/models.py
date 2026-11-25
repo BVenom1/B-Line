@@ -64,6 +64,7 @@ class Conversation(Base):
 
 # groups:
 class GroupModel(BaseModel):
+    group_id: int
     group_name: str
     description: str | None = None
     created_at: datetime
@@ -73,17 +74,15 @@ class Group(Base):
     group_id: Mapped[int] = mapped_column(primary_key=True)
     group_name: Mapped[str] = mapped_column(String(50))
     description: Mapped[str | None] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    conversation_id: Mapped[int | None] = mapped_column(
-        ForeignKey("conversations.conversation_id", ondelete="SET NULL"),
-        nullable=True
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=date_func())
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.conversation_id", ondelete="CASCADE"), nullable=False)
 
     def clean_return(self) -> GroupModel:
         return GroupModel(
+            group_id=self.group_id,
             group_name=self.group_name,
             description=self.description,
-            created_at=self.created_at
+            created_at=self.created_at,
         )
 
 # memberships:
@@ -102,7 +101,7 @@ class Membership(Base):
     membership_id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     group_id: Mapped[int] = mapped_column(ForeignKey("groups.group_id"))
-    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=date_func())
     membership_type: Mapped[MembershipTypes] = mapped_column(default=MembershipTypes.MEMBER)
     notification_type: Mapped[NotificationTypes] = mapped_column(default=NotificationTypes.NOTIFY)
 

@@ -1,47 +1,78 @@
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, status, Depends
+from pydantic import BaseModel, EmailStr, TypeAdapter, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, or_
-from database import get_db
+from database import get_db, add_to_db
 from models import (User, UserModel, SessionToken)
-from security import hash_password, verify_password
-from routes import sessions
+from routes import helpers
 
-router = APIRouter(prefix="/user", tags=["user"])
+router = APIRouter(prefix="", tags=["user"])
 
 # POST /signup
 class SignupModel(BaseModel):
     user_name: str
-    email: str
+    email: EmailStr
     password: str
     status: str | None
 
-@router.post("/signup")
-async def signup(user: SignupModel, db: AsyncSession = Depends(get_db)) -> UserModel:
-    check = await db.scalar(select(User).where(or_(
-        User.email == user.email,
-        User.user_name == user.user_name
-    )))
-    if check != None:
-        if check.email.lower() == user.email.lower():
-            raise HTTPException(409, "Given email is already in use. Try logging in")
-        elif check.user_name == user.user_name:
-            raise HTTPException(409, "Given username is taken. Try another username")
-        else:
-            raise HTTPException(409, "Something went wrong. Please try again")
-
-    # TODO: password strength check
-    
-    db_user = User(
-        user_name = user.user_name,
-        email = user.email,
-        password_hash = hash_password(user.password),
-        status = user.status
+def clean_username(user_name: str) -> str:
+    clean_uname = user_name.strip()
+    if clean_uname == "": raise HTTPException(
+        status.HTTP_400_BAD_REQUEST,
+        detail="Given username is empty"
+    )
+    try:
+        TypeAdapter(EmailStr).validate_python(clean_uname)
+    except ValidationError:
+        return clean_uname
+    raise HTTPException(
+        status.HTTP_400_BAD_REQUEST,
+        detail="Username cannot be an email address"
     )
 
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
+@router.post("/signup")
+async def signup(user: SignupModel, db: AsyncSession = Depends(get_db)) -> UserModel:
+    clean_uname = clean_username(user.user_name)
+    clean_email = user.email.strip().lower()
+
+    check = await db.scalar(select(User).where(or_(
+        User.email == clean_email,
+        User.user_name == clean_uname
+    )))
+    if check != None:
+        if check.email.lower() == clean_email:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Given email is already in use. Try logging in"
+            )
+        elif check.user_name == clean_uname:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Given username is taken. Try another username"
+            )
+        else:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Something went wrong. Please try again"
+            )
+
+    # TODO: password strength 
+    
+    db_user = User(
+        user_name = clean_uname,
+        email = clean_email,
+        password_hash = helpers.hash_password(user.password),
+        status = (user.status or "").strip() or None
+    )
+    
+    await add_to_db(
+        db_user, db,
+        lambda: HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Conflict when registering user. please try again"
+        ),
+        commit=True
+    )
 
     # TODO: send verification email
 
@@ -58,18 +89,31 @@ class LoginResponse(BaseModel):
 
 @router.post("/login")
 async def login(login: LoginModel, db: AsyncSession = Depends(get_db)) -> LoginResponse:
+    login.uname_or_email = login.uname_or_email.strip()
+    if not login.uname_or_email: raise HTTPException(
+        status.HTTP_401_UNAUTHORIZED,
+        detail="Incorrect username/email or password"
+    )
+
     check = await db.scalar(select(User).where(or_(
-        User.email == login.uname_or_email,
+        User.email == login.uname_or_email.lower(),
         User.user_name == login.uname_or_email
     )))
-    if check == None or not verify_password(login.password, check.password_hash):
-        raise HTTPException(401, "Incorrect username/email or password")
+    if check == None or not helpers.verify_password(login.password, check.password_hash):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Incorrect username/email or password"
+        )
 
-    await db.execute(delete(SessionToken).where(
-        SessionToken.user_id == check.user_id
-    ))
-
-    await sessions.remove_sessions(check.user_id, db)
-    token = await sessions.add_session(check.user_id, db)
+    await helpers.remove_sessions(check.user_id, db)
+    token = await helpers.add_session(check.user_id, db)
+    await db.commit()
 
     return LoginResponse(user=check.clean_return(), token=token)
+
+# @router.get("/test-{token}")
+# async def test(token: str, db: AsyncSession = Depends(get_db)) -> UserModel:
+#     user = await sessions.verify_session(token, db)
+#     if user == None: 
+#         raise HTTPException(404, "Error")
+#     return user.clean_return()

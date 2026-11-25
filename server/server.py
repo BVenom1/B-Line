@@ -4,7 +4,7 @@ This is the file where the FastAPI app and endpoints are defined.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_models
-from routes import signup_login
+from routes import signup_login, groups_memberships
 
 # create API application
 app = FastAPI(lifespan=init_models)
@@ -24,70 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(signup_login.router, prefix="/api")
-
-# create API endpoints
-@app.get("/test")
-async def test():
-    return "this is a test"
-
-# # POST /user-{user_id}/create-group
-# @app.post("/user-{user_id}/create-group")
-# async def create_group(user_id: int, group: GroupModel, db: AsyncSession = Depends(get_db)) -> GroupModel:
-#     # check if user exists. TODO: check if user is logged in using a session token
-#     check = await db.scalar(select(User).where(User.user_id == user_id))
-#     if check == None: raise HTTPException(401, "Given user does not exist")
-
-#     # create conversation for the group
-#     db_conversation = Conversation()
-#     db.add(db_conversation)
-#     await db.commit()
-#     await db.refresh(db_conversation)
-
-#     # create database entry of group, add to groups table
-#     group.created_at = None     # reset group creation date
-#     group.group_id = None       # reset group_id (prevents arbitrary group_id insertions)
-#     group.conversation_id = db_conversation.conversation_id     # attach conversation to group
-#     db_group = Group.from_scema(group)
-#     db.add(db_group)
-#     await db.commit()
-#     await db.refresh(db_group)
-
-#     # create database entry of given user as an admin of the group, add to memberships table
-#     membership = MembershipModel(
-#         user_id = user_id,
-#         group_id = db_group.group_id,
-#         membership_type = MembershipTypes.ADMIN
-#     )
-#     db_membership = Membership.from_schema(membership)
-#     db.add(db_membership)
-#     await db.commit()
-#     await db.refresh(db_membership)
-
-#     return db_group.clean_return()
-
-# # GET /user-{user_id}/group-{group_id}/get-group-members
-# class MembershipUserModel(BaseModel):
-#     membership: MembershipModel
-#     user: UserModel
-
-# @app.get("/user-{user_id}/group-{group_id}/get-group-members")
-# async def get_group_members(user_id: int, group_id: int, db: AsyncSession = Depends(get_db)) -> list[MembershipUserModel]:
-#     # TODO: check if user is valid and logged in
-#     check = await db.scalar(select(Membership).where(and_(
-#         Membership.user_id == user_id,
-#         Membership.group_id == group_id
-#     )))
-#     if check == None: raise HTTPException(404, "Group not found")
-
-#     db_members = (
-#         await db.execute(select(Membership, User)
-#         .join(User, Membership.user_id == User.user_id)
-#         .where(Membership.group_id == group_id))
-#     ).all()
-#     return [
-#         MembershipUserModel(membership=membership.clean_return(), user=user.clean_return())
-#         for membership, user in db_members
-#     ]
+app.include_router(groups_memberships.router, prefix="/api")
 
 # # PUT /user-{user_id}/group-{group_id}/add_friend-{friend_id}
 # @app.put("/user-{user_id}/group-{group_id}/add_friend-{friend_id}")
@@ -119,19 +56,6 @@ async def test():
 #     await db.refresh(db_membership)
 
 #     return db_membership.clean_return()
-
-# # GET /user-{user_id}/get_groups
-# @app.get("/user-{user_id}/get_groups")
-# async def get_groups(user_id: int, db: AsyncSession = Depends(get_db)) -> list[GroupModel]:
-#     # TODO: check if user exists & is logged in
-
-#     db_groups = await db.scalars(
-#         select(Group)
-#         .join(Membership, Group.group_id == Membership.group_id)
-#         .where(Membership.user_id == user_id)
-#     )
-
-#     return [GroupModel.model_validate(x) for x in db_groups]
 
 # # POST /user-{user_id}/add_contact-{contact_uname_or_email}
 # @app.post("/user-{user_id}/add_contact-{contact_uname_or_email}")
