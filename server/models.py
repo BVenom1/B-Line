@@ -116,13 +116,37 @@ class ContactStatus(enum.Enum):
     REJECTED = "rejected"
     BLOCKED = "blocked"
 
+class ContactModel(BaseModel):
+    contact_id: int
+    nickname: str | None
+    requested_at: datetime
+    responded_at: datetime | None
+    contact_status: ContactStatus
+
 class Contact(Base):
     __tablename__ = "contacts"
     contact_id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     contact_user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
-    nickname: Mapped[str | None] = mapped_column(String(25))
-    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    nickname: Mapped[str | None] = mapped_column(String(25), default=None)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=date_func())
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     contact_status: Mapped[ContactStatus] = mapped_column(default=ContactStatus.REQUESTED)
-    conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.conversation_id"))
+    conversation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("conversations.conversation_id"),
+        nullable=True,
+        default=None
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "contact_user_id", name="unique_contact"),
+    )
+
+    def clean_return(self) -> ContactModel:
+        return ContactModel(
+            contact_id=self.contact_id,
+            nickname=self.nickname,
+            requested_at=self.requested_at,
+            responded_at=self.responded_at,
+            contact_status=self.contact_status
+        )

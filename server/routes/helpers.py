@@ -9,7 +9,8 @@ import secrets, hashlib
 from datetime import datetime, timezone
 
 from models import (
-    SessionToken, User, Conversation
+    SessionToken, User,
+    ContactStatus, Contact
 )
 from database import add_to_db, get_db
 
@@ -88,3 +89,24 @@ def hash_password(raw_password: str) -> str:
 def verify_password(raw_password: str, password_hash: str) -> bool:
     return hasher.verify(raw_password, password_hash)
 
+
+# function to get the contact addressed to a user
+
+async def get_contact(
+    db: AsyncSession,
+    contact_id: int,
+    user: User | None = None,
+    contact_user: User | None = None,
+    contact_status: ContactStatus | None = None,
+) -> Contact:
+    conditions = [Contact.contact_id == contact_id]
+    if user: conditions.append(Contact.user_id == user.user_id)
+    if contact_user: conditions.append(Contact.contact_user_id == contact_user.user_id)
+    if status: conditions.append(Contact.contact_status == contact_status)
+    
+    db_contact = await db.scalar(select(Contact).where(*conditions))
+    if db_contact is None: raise HTTPException(
+        status.HTTP_404_NOT_FOUND,
+        detail="Contact not found"
+    )
+    return db_contact

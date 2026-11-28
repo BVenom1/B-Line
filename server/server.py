@@ -4,7 +4,7 @@ This is the file where the FastAPI app and endpoints are defined.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_models
-from routes import signup_login, groups_memberships
+from routes import signup_login, groups_memberships, contacts
 
 # create API application
 app = FastAPI(lifespan=init_models)
@@ -25,6 +25,7 @@ app.add_middleware(
 
 app.include_router(signup_login.router, prefix="/api")
 app.include_router(groups_memberships.router, prefix="/api")
+app.include_router(contacts.router, prefix="/api")
 
 # # PUT /user-{user_id}/group-{group_id}/add_friend-{friend_id}
 # @app.put("/user-{user_id}/group-{group_id}/add_friend-{friend_id}")
